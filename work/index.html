@@ -5,14 +5,26 @@
 
   <title>Realtime communication with WebRTC</title>
 
-  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="/css/main.css" />
 
 </head>
 
 <body>
 
-  <h1>Realtime communication with WebRTC</h1>
+  <h1>Audio/Video conferencing with WebRTC <font face="Arial">&#x1F525; </font> </h1>
 
+  <div id="videos">
+    <video id="localVideo" autoplay muted></video>
+    <div id="remoteVideos">
+
+    </div>
+    <!-- <video id="remoteVideo" autoplay></video> -->
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  <script src="js/main.js"></script>
+  
 </body>
 
 </html>
