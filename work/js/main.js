@@ -146,8 +146,9 @@ function createPeerConnection(forClientId) {
   try {
     let connection = new RTCPeerConnection(null);
     connection.onicecandidate = handleIceCandidate(forClientId);
-    connection.onaddstream = handleRemoteStreamAdded(forClientId);
-    connection.onremovestream = handleRemoteStreamRemoved(forClientId);
+    connection.ontrack = handleTrack(forClientId);
+    // connection.onaddstream = handleRemoteStreamAdded(forClientId);
+    // connection.onremovestream = handleRemoteStreamRemoved(forClientId);
     peerConnections[forClientId] = connection;
     console.log('  Created RTCPeerConnnection for ', forClientId);
   } catch (e) {
@@ -165,12 +166,12 @@ function maybeStart(forClientId) {
 }
 
 function addStream(forClientId) {
-  peerConnections[forClientId].addStream(localStream);
-  console.log("  added Stream for ", forClientId);
-  // localStream.getTracks((track) => {
-  //   peerConnections[forClientId].addTrack(track, localStream);
-  //   console.log("  added Stream for ", forClientId, track);
-  // })
+  // peerConnections[forClientId].addStream(localStream);
+  // console.log("  added Stream for ", forClientId);
+  localStream.getTracks((track) => {
+    peerConnections[forClientId].addTrack(track, localStream);
+    console.log("  added Stream for ", forClientId, track);
+  })
 }
 
 function sendOffer(forClientId) {
@@ -211,6 +212,16 @@ function handleRemoteStreamAdded(forClientId) {
     let element = document.createElement('video');
     element.setAttribute('autoplay', '');
     element.srcObject = event.stream;
+    remoteVideos.appendChild(element);
+  }
+}
+
+function handleTrack(forClientId) {
+  return (event) => {
+    console.log('  handleTrack for :', forClientId, "event: ", event);
+    let element = document.createElement('video');
+    element.setAttribute('autoplay', '');
+    element.srcObject = event.streams[0];
     remoteVideos.appendChild(element);
   }
 }
