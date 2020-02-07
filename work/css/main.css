@@ -5,5 +5,6 @@ body {
 video {
   max-width: 100%;
   width: 320px;
+  margin: 15px;
   /* filter: hue-rotate(180deg) saturate(200%); */
 }

@@ -21,7 +21,7 @@ io.sockets.on('connection', function(socket) {
   }
 
   socket.on('message', function(message) {
-    log(`'on.message' Client ${message && message.clientId} said: `, message && message.payload && message.payload.type);
+    log(`'on.message' Client ${message && message.from} said: `, message && message.payload && message.payload.type);
     // for a real app, would be room-only (not broadcast)
     socket.broadcast.emit('message', message);
   });

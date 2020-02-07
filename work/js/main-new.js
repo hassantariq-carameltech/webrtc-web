@@ -90,33 +90,34 @@ function gotStream(stream) {
   });
 }
 
-function sendMessage(payload) {
+function sendMessage(payload, to='*') {
   var message = {
-    clientId: clientId,
+    to: to,
+    from: clientId,
     payload: payload
   };
-  console.log("sendMesage: ", message);
+  console.log(`sendMesage: to: ${to}, from: ${clientId}, payload: `, payload);
   socket.emit('message', message);
 }
 
 socket.on('message', function(message) {
-  // console.log(`  'on.message'=> type: ${message.payload.type}, by client: ${message.clientId}`, message);
+  // console.log(`  'on.message'=> type: ${message.payload.type}, by client: ${message.from}`, message);
   switch(message.payload.type) {
     case GOT_USER_MEDIA: 
-      console.log("  stream available from client: ", message.clientId, ", lets send an offer");
+      console.log("  stream available from client: ", message.from, ", to: ", message.to," lets send an offer");
 
       // Create local peer connection
       console.log(`  1. create RTCPeerConnection`);
       let localConnection = new RTCPeerConnection(servers);
 
       // Handlers
-      localConnection.onicecandidate = handleIceCandidate(message.clientId);
+      localConnection.onicecandidate = handleIceCandidate(message.from);
       console.log(`  2. addTracks in connection`);
-      localConnection.ontrack = handleTrack(message.clientId);
+      localConnection.ontrack = handleTrack(message.from);
       
       
       //Store in global Hash
-      peerConnections[message.clientId] = {
+      peerConnections[message.from] = {
         connection: localConnection,
         trackAdded: false
       };
@@ -140,7 +141,7 @@ socket.on('message', function(message) {
           console.log(`  4. setLocalDescription`);
           localConnection.setLocalDescription(desc);
           console.log(`  5. sendMessage regarding 'offer'`);
-          sendMessage(desc);
+          sendMessage(desc, message.from);
         }, 
         (error) => {
           console.error('  Failed to create session description: ' + error.toString());
@@ -148,19 +149,22 @@ socket.on('message', function(message) {
         
       break;
     case OFFER: 
-      console.log("  stream offer received from", message.clientId);
-      if (peerConnections[message.clientId]) return console.error(`  * connection already exists in session with ${message.clientId}`);
+      if (message.to !== clientId) return console.error("OFFER ::: ", "should be Ignored", "from: ", message.from, "to: ", message.to);
+      // console.log("OFFER ::: from: ", message.from, "to: ", message.to, "payload: ", message.payload);
+      if (peerConnections[message.from]) return console.error(`  * connection already exists in session with ${message.from}`);
       
+      console.log("OFFER :::  SHOULD ACCEPT :: ", "from: ", message.from, "to: ", message.to);
+
       // Create remote peer connection 
       console.log(`  6. create RTCPeerConnection`);
       let remoteConnection = new RTCPeerConnection(servers);
       
       // Handlers
-      remoteConnection.onicecandidate = handleIceCandidate(message.clientId);
-      remoteConnection.ontrack = handleTrack(message.clientId);
+      remoteConnection.onicecandidate = handleIceCandidate(message.from);
+      remoteConnection.ontrack = handleTrack(message.from);
 
       //Store in global Hash
-      peerConnections[message.clientId] = {
+      peerConnections[message.from] = {
         connection: remoteConnection,
         trackAdded: false
       };
@@ -188,32 +192,30 @@ socket.on('message', function(message) {
             console.log(`  9. setLocalDescription`);
             remoteConnection.setLocalDescription(desc);
             console.log(`  10. sendMessage regarding 'answer'`);
-            sendMessage(desc);
+            sendMessage(desc, message.from);
       },
       (error) => {
         console.error('  Failed to create session description: ' + error.toString());
       });
-
-
-      // maybeStart(message.clientId);
-      // answerTheOffer(message.clientId, message.payload);
       break;
     case ANSWER: 
-      console.log(" received answer from ", message.clientId);
-      if (!answered[message.clientId]) {
+      if (message.to !== clientId) return console.error("ANSWER ::: ", "should be Ignored", "from: ", message.from, "to: ", message.to);
+      if (!answered[message.from]) {
+        console.log("ANSWER :::  SHOULD ACCEPT :: ", "from: ", message.from, "to: ", message.to);
         console.log(`  11. setRemoteDescription`);
-        peerConnections[message.clientId].connection.setRemoteDescription(new RTCSessionDescription(message.payload));
-        answered[message.clientId] = true;
+        peerConnections[message.from].connection.setRemoteDescription(new RTCSessionDescription(message.payload));
+        answered[message.from] = true;
       }
       break;
     case CANDIDATE:
-      console.log("  candidate ", message, peerConnections);
-      if (peerConnections[message.clientId] && peerConnections[message.clientId].connection) {
+      if (message.to !== clientId) return console.error("CANDIDATE ::: ", "should be Ignored", "from: ", message.from, "to: ", message.to);
+      if (peerConnections[message.from] && peerConnections[message.from].connection) {
+        console.log("CANDIDATE ::: from: ", message.from, "to: ", message.to, "payload: ", message.payload);
         var candidate = new RTCIceCandidate({
           sdpMLineIndex: message.payload.label,
           candidate: message.payload.candidate
         });
-        peerConnections[message.clientId].connection.addIceCandidate(candidate);
+        peerConnections[message.from].connection.addIceCandidate(candidate);
       }
       break;
     
@@ -240,7 +242,7 @@ function handleIceCandidate(forClientId) {
         label: event.candidate.sdpMLineIndex, 
         id: event.candidate.sdpMid,
         candidate: event.candidate.candidate
-      });
+      }, forClientId);
     } else {
       console.log('End of candidates.');
     }
